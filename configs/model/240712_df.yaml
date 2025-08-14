@@ -1,0 +1,26 @@
+class_path: bmfwf.models.directfiltering.DirectFiltering
+init_args:
+  learning_rate: 1e-3
+  batch_size: 8
+  loss: MagnitudeAbsoluteError
+  metrics_test: HASQI,HASPI,PESQWB,SISDR
+  metrics_val: ""
+  frame_length: 128
+  shift_length: 32
+  filter_length: 5
+  fs: 16000
+  num_channels: 2
+  minimum_gain: -20.0
+  window_type: hann
+  minimum_gain_implementation: conventional
+  feature_representation: mag_phase
+  use_batchnorm: true
+  use_log: true
+  interaural_rtf: "False"
+  binaural: true
+  shadow_filter: false
+  omit_first_last_bin: true
+  fix_omit_first_last_bin: true
+  layer: 6
+  stack: 2
+  kernel: 3

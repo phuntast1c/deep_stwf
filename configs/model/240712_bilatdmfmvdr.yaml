@@ -1,0 +1,36 @@
+class_path: bmfwf.models.bilatdmfmvdr.BilatDMFMVDR
+init_args:
+  learning_rate: 1e-3
+  batch_size: 8
+  loss: MagnitudeAbsoluteError
+  metrics_test: HASQI,HASPI,PESQWB,SISDR
+  metrics_val: ""
+  frame_length: 128
+  shift_length: 32
+  filter_length: 5
+  fs: 16000
+  num_channels: 2
+  minimum_gain: -20.0
+  window_type: hann
+  minimum_gain_implementation: conventional
+  matrix_structure: hermitian_psd
+  speech_ifc_estimation: direct
+  feature_representation: mag_phase
+  use_mwf: true
+  compute_inverse: false
+  use_batchnorm: true
+  use_log: true
+  oracle: false
+  time_invariant: false
+  interaural_rtf: "False"
+  shadow_filter: false
+  hermitian_psd_old_implementation: false
+  hermitian_psd_unique: true
+  omit_first_last_bin: true
+  fix_omit_first_last_bin: true
+  normalize_gamma: false
+  noise_stcm_left_and_right: false
+  estimator: tcn
+  layer: 6
+  stack: 2
+  kernel: 3

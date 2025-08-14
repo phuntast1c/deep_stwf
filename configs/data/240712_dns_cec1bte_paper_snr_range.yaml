@@ -1,0 +1,9 @@
+class_path: bmfwf.datasets.dns_clarity.DataModuleDNSBinaural
+init_args:
+  num_workers: 8
+  dataset_version: v2
+  limit_train_val_size: 1.0
+  snr_train_min: 0
+  snr_train_max: 15
+  target: clean
+  target_eval: clean
