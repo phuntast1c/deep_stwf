@@ -1,0 +1,29 @@
+name: j2
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - pyyaml
+  - wandb
+  - lightning
+  - pandas
+  - torchmetrics
+  - pesq
+  - pystoi
+  - matplotlib
+  - natsort
+  - numpy
+  - scipy
+  - pip:
+    - pypesq
+    - human_readable_ids
+    - clarity-challenge
+    - soundfile
