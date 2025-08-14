@@ -168,8 +168,7 @@ class DirectFiltering(BaseLitModel):
             [(noisy[:, x, 1:-1].abs() + EPS) for x in torch.arange(noisy.shape[1])],
             dim=1,
         )
-        if self.use_log:
-            noisy_mag = noisy_mag.log10()
+        noisy_mag = noisy_mag.log10()
 
         noisy_phase_cos = torch.cat(
             [noisy[:, x, 1:-1].angle().cos() for x in torch.arange(noisy.shape[1])],
@@ -180,9 +179,7 @@ class DirectFiltering(BaseLitModel):
             dim=1,
         )
 
-        if self.use_batchnorm:
-            # apply batch normalization before computing any further
-            noisy_mag = self.batchnorm1d_noisy(noisy_mag)
+        noisy_mag = self.batchnorm1d_noisy(noisy_mag)
 
         features_cat = torch.cat([noisy_mag, noisy_phase_cos, noisy_phase_sin], dim=1)
 
@@ -384,7 +381,7 @@ class DirectFiltering(BaseLitModel):
                 2,
                 self.frequency_bins,
                 self.filter_length * self.num_channels * 2,
-                1 + self.complex_valued,
+                2,
                 -1,
             )
 

@@ -499,7 +499,10 @@ def filter_minimum_gain(
     output = (hermitian(w) @ y)[..., 0, 0]
 
     if mask is None:
-        mask = output.abs() < (minimum_gain * Y).abs()
+        if binaural:
+            mask = output.abs() < (minimum_gain * Y).abs()
+        else:
+            mask = output[:, :1].abs() < (minimum_gain * Y).abs()
 
     if keep_phase_enhanced:
         output[mask] = minimum_gain * Y[mask].abs() * output[mask] / output[mask].abs()

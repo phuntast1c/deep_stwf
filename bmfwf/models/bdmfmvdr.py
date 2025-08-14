@@ -40,6 +40,7 @@ class BDMFMVDR(BaseLitModel):
         window_type: str = "hann",
         interaural_rtf: str = "False",
         noise_stcm_left_and_right: bool = False,
+        binaural: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -68,7 +69,7 @@ class BDMFMVDR(BaseLitModel):
         self.frequency_bins = self.frame_length // 2 + 1
         self.frequency_bins -= 2
 
-        self.binaural = True
+        self.binaural = binaural
         self.normalize_gamma = False
 
         if self.hidden_dim is None:
@@ -98,8 +99,7 @@ class BDMFMVDR(BaseLitModel):
         )
 
         # correlation matrix estimators
-        if self.feature_representation == "mag_phase":
-            input_size_factor = 3 * self.num_channels
+        input_size_factor = 3 * self.num_channels
 
         if self.hidden_dim is None:
             self.hidden_dim = int(((1 + self.binaural) * self.frequency_bins) / 4)
@@ -135,7 +135,7 @@ class BDMFMVDR(BaseLitModel):
                     - 1
                 )
                 * 2
-                + self.use_mwf * (1 + self.independent_speech_psd_estimates)
+                + (1 + self.independent_speech_psd_estimates)
             ) * self.frequency_bins
         elif self.interaural_rtf == "ipsilateral":
             self.output_size_gamma = (
@@ -146,7 +146,7 @@ class BDMFMVDR(BaseLitModel):
                     + (1 + self.binaural) * (self.num_channels - 1)
                 )
                 * 2
-                + self.use_mwf * (1 + self.independent_speech_psd_estimates)
+                + (1 + self.independent_speech_psd_estimates)
             ) * self.frequency_bins
         else:  # none
             self.output_size_gamma = (
@@ -156,7 +156,7 @@ class BDMFMVDR(BaseLitModel):
                     * (self.filter_length - (not self.normalize_gamma))
                 )
                 * 2
-                + self.use_mwf * (1 + self.independent_speech_psd_estimates)
+                + (1 + self.independent_speech_psd_estimates)
             ) * self.frequency_bins
 
         self.speech_ifc_estimator = bb.TCNEstimator(
@@ -184,18 +184,13 @@ class BDMFMVDR(BaseLitModel):
         (
             noisy,
             num_samples,
-            noise,
-            speech,
-            noisy_mag,
             features_cat,
         ) = self.get_features(batch)
 
         batch_size = noisy.shape[0]
 
         # construct multi-frame vectors for noisy, noise and speech
-        noise, speech, noisy_signalmodel = self.get_multiframe_vectors(
-            noise, speech, noisy
-        )
+        noisy_signalmodel = self.get_multiframe_vectors(noisy)
 
         # Phi estimation variants
         correlation_noise = self.estimate_matrix_quantities(features_cat, batch_size)
@@ -279,7 +274,7 @@ class BDMFMVDR(BaseLitModel):
         batch_size,
         noisy_signalmodel,
     ):
-        gammax, speech_psd_estimate, interaural_rtf = None, None, None, None
+        gammax, speech_psd_estimate, interaural_rtf = None, None, None
 
         gammax, speech_psd_estimate, interaural_rtf = self.get_gammax_direct(
             features_cat, batch_size, noisy_signalmodel
@@ -459,20 +454,21 @@ class BDMFMVDR(BaseLitModel):
             ((1 + self.binaural) * self.num_channels - 1,), dim=-1
         )
 
-        speech_psd_estimate = torch.cat(
-            [
-                speech_psd_estimate,
-                interaural_rtf[
-                    ...,
-                    None,
-                    -(self.binaural * self.num_channels),
-                ]
-                .abs()
-                .pow(2)
-                * speech_psd_estimate,
-            ],
-            dim=-1,
-        )
+        if self.binaural:
+            speech_psd_estimate = torch.cat(
+                [
+                    speech_psd_estimate,
+                    interaural_rtf[
+                        ...,
+                        None,
+                        -(self.binaural * self.num_channels),
+                    ]
+                    .abs()
+                    .pow(2)
+                    * speech_psd_estimate,
+                ],
+                dim=-1,
+            )
 
         shape_ones = list(gammax.shape)
         shape_ones[-1] = 1
@@ -494,10 +490,7 @@ class BDMFMVDR(BaseLitModel):
             1,
             self.frequency_bins,
             int(
-                (
-                    self.output_size_gamma
-                    - self.use_mwf * (1 + self.independent_speech_psd_estimates)
-                )
+                (self.output_size_gamma - (1 + self.independent_speech_psd_estimates))
                 / (self.frequency_bins * 2)
             ),
             2,  # complex values
@@ -588,7 +581,7 @@ class BDMFMVDR(BaseLitModel):
 
         return correlation_noise
 
-    def get_multiframe_vectors(self, noise, speech, noisy):
+    def get_multiframe_vectors(self, noisy):
         noisy_signalmodel = F.pad(noisy, pad=[self.filter_length - 1, 0]).unfold(
             dimension=-1, size=self.filter_length, step=1
         )
@@ -597,7 +590,7 @@ class BDMFMVDR(BaseLitModel):
             dim=-1,
         )
 
-        return noise, speech, noisy_signalmodel
+        return noisy_signalmodel
 
     def get_features(self, batch):
         # channels are ordered as L, L, ..., R, R, ... if binaural
@@ -606,17 +599,16 @@ class BDMFMVDR(BaseLitModel):
         noisy = torch.stack([self.stft.get_stft(x) for x in noisy])
 
         # use (log) magnitude and phase spectra
-        noisy_mag, features_cat = self.get_features_mag_phase(noisy)
+        features_cat = self.get_features_mag_phase(noisy)
 
-        return noisy, num_samples, noisy_mag, features_cat
+        return noisy, num_samples, features_cat
 
     def get_features_mag_phase(self, noisy):
         noisy_mag = torch.cat(
             [(noisy[:, x, 1:-1].abs() + EPS) for x in torch.arange(noisy.shape[1])],
             dim=1,
         )
-        if self.use_log:
-            noisy_mag = noisy_mag.log10()
+        noisy_mag = noisy_mag.log10()
 
         noisy_phase_cos = torch.cat(
             [noisy[:, x, 1:-1].angle().cos() for x in torch.arange(noisy.shape[1])],
@@ -631,12 +623,12 @@ class BDMFMVDR(BaseLitModel):
 
         features_cat = torch.cat([noisy_mag, noisy_phase_cos, noisy_phase_sin], dim=1)
 
-        return noisy_mag, features_cat
+        return features_cat
 
     def get_mvdr(self, gammax, Phi, regularize=False):
         if regularize:
             Phi = utils.tik_reg(Phi, self.reg)
-        b = torch.linalg.solve(Phi, gammax) if self.compute_inverse else Phi @ gammax
+        b = Phi @ gammax
         return b / (gammax.mH @ b + EPS).real, b
 
     def get_postfilter(

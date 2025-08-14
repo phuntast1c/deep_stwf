@@ -40,7 +40,7 @@ trainer:
   enable_checkpointing: null
   enable_progress_bar: true
   enable_model_summary: null
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 2
   gradient_clip_val: 5.0
   gradient_clip_algorithm: null
   deterministic: false
@@ -53,16 +53,16 @@ trainer:
   plugins: null
   sync_batchnorm: false
   reload_dataloaders_every_n_epochs: 0
-  default_root_dir: /home/marvint/dr/code/deep_learning_projects/journal2_extension/bmfwf/saved/20240712_182530_fluffy-term-49
+  default_root_dir: /home/marvint/dr/code/deep_learning_projects/journal2_extension/bmfwf/saved/20240712_183034_occasional-truck-28
 compile: false
 checkpoint: null
 job_type: fit
-ckpt_path: /home/marvint/dr/code/deep_learning_projects/journal2_extension/bmfwf/saved/20240712_182530_fluffy-term-49/last.ckpt
+ckpt_path: /home/marvint/dr/code/deep_learning_projects/journal2_extension/bmfwf/saved/20240712_183034_occasional-truck-28/last.ckpt
 model:
   class_path: bmfwf.models.BDMFMVDR
   init_args:
     learning_rate: 0.001
-    batch_size: 8
+    batch_size: 4
     loss: MagnitudeAbsoluteError
     metrics_test: HASQI,HASPI,PESQWB,SISDR
     metrics_val: ''
@@ -101,7 +101,7 @@ model:
     hermitian_psd_unique: true
     omit_first_last_bin: true
     normalize_gamma: false
-    noise_stcm_left_and_right: false
+    noise_stcm_left_and_right: true
     estimator: tcn
     D: 32
     E: 8

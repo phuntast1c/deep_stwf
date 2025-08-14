@@ -61,23 +61,7 @@ class BaseLitModel(pl.LightningModule):
         raise NotImplementedError
 
     def forward(self, x: dict) -> dict:
-        """
-        Perform a forward pass through the model.
-
-        Parameters:
-        x (dict): The input utterance with key "input".
-
-        Returns:
-        dict: The processed utterance with key "input_proc".
-
-        If `process_long_utterance` is True, the input tensor will be processed
-        in chunks with a specified chunk size and overlap. Otherwise, the input
-        tensor will be processed as a whole.
-        """
-        if self.process_long_utterance:
-            return self.forward_long_utterance(x)
-        else:
-            return self.forward_(x)
+        return self.forward_(x)
 
     def count_parameters(self):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)

@@ -64,8 +64,7 @@ class BilatDMFMVDR(BaseLitModel):
         self.noise_stcm_left_and_right = noise_stcm_left_and_right
 
         self.frequency_bins = self.frame_length // 2 + 1
-        if self.omit_first_last_bin:
-            self.frequency_bins -= 2
+        self.frequency_bins -= 2
 
         self.model_left = BDMFMVDR(
             learning_rate=learning_rate,
