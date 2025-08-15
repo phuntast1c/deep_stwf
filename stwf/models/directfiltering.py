@@ -1,3 +1,8 @@
+"""
+This module defines the DirectFiltering model, which is inspired by ConvTasNet
+and Deep Filtering approaches for binaural speech enhancement.
+"""
+
 import math
 from typing import Union
 
@@ -16,9 +21,10 @@ PI = math.pi
 
 class DirectFiltering(BaseLitModel):
     """
-    binaural complex-valued filtering over multiple frames & microphones
-    architecture inspired ConvTasNet
-    algorithm inspired by Deep Filtering approach
+    Binaural complex-valued filtering over multiple frames & microphones.
+    The architecture is inspired by ConvTasNet and the algorithm is inspired
+    by the Deep Filtering approach. It directly estimates the filter coefficients
+    in the time-frequency domain.
     """
 
     def __init__(
@@ -45,6 +51,29 @@ class DirectFiltering(BaseLitModel):
         interaural_rtf: str = "False",
         **kwargs,
     ):
+        """
+        Initializes the DirectFiltering model.
+
+        Args:
+            learning_rate (float, optional): Learning rate. Defaults to 0.0003.
+            batch_size (int, optional): Batch size. Defaults to 8.
+            loss (str, optional): Loss function. Defaults to "MagnitudeAbsoluteError".
+            metrics_test (Union[tuple, str], optional): Test metrics.
+            metrics_val (Union[tuple, str], optional): Validation metrics.
+            frame_length (int, optional): Frame length for STFT. Defaults to 128.
+            shift_length (int, optional): Shift length for STFT. Defaults to 32.
+            filter_length (int, optional): Length of the filter. Defaults to 5.
+            layer (int, optional): Number of layers in the TCN estimator. Defaults to 6.
+            stack (int, optional): Number of stacks in the TCN estimator. Defaults to 2.
+            kernel (int, optional): Kernel size in the TCN estimator. Defaults to 3.
+            hidden_dim (int, optional): Hidden dimension of the TCN. Defaults to None.
+            fs (int, optional): Sampling frequency. Defaults to 16000.
+            num_channels (int, optional): Number of channels. Defaults to 1.
+            minimum_gain (float, optional): Minimum gain in dB. Defaults to -20.0.
+            trunc_val (float, optional): Truncation value for the filter estimates. Defaults to None.
+            window_type (str, optional): Window type for STFT. Defaults to "hann".
+            interaural_rtf (str, optional): Interaural RTF estimation method. Defaults to "False".
+        """
         super().__init__(
             lr=learning_rate,
             batch_size=batch_size,
@@ -75,6 +104,10 @@ class DirectFiltering(BaseLitModel):
         self.save_hyperparameters()
 
     def set_parameters(self):
+        """
+        Sets up the model parameters, including STFT, TCN estimator, and other
+        related components.
+        """
         if self.interaural_rtf == "False":
             self.interaural_rtf = False
         else:
@@ -158,6 +191,18 @@ class DirectFiltering(BaseLitModel):
         self.receptive_field = self.estimator.receptive_field
 
     def forward_(self, batch):
+        """
+        Forward pass of the DirectFiltering model.
+
+        It extracts features, estimates the filter coefficients using the TCN,
+        applies the filter to the noisy signal, and returns the enhanced output.
+
+        Args:
+            batch (dict): Input batch containing the noisy signal.
+
+        Returns:
+            dict: Dictionary containing the processed output and STFT.
+        """
         noisy = batch["input"]
         num_samples = noisy.shape[-1]
         batch_size = noisy.shape[0]
@@ -285,6 +330,10 @@ class DirectFiltering(BaseLitModel):
         return output
 
     def apply_simplifications(self, filters):
+        """
+        Applies simplifications to the estimated filters based on the interaural
+        RTF estimation method.
+        """
         if self.interaural_rtf == "global":
             interaural_rtf, filters = filters[:, 0].tensor_split(
                 (2 * self.num_channels - 1,), dim=-1
@@ -356,6 +405,10 @@ class DirectFiltering(BaseLitModel):
         return filters
 
     def get_reshape_size(self, batch_size):
+        """
+        Determines the reshape size for the filter tensor based on the
+        interaural RTF estimation method.
+        """
         if self.interaural_rtf == "global":
             reshape_size = (
                 batch_size,

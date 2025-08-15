@@ -1,3 +1,7 @@
+"""
+This module defines the Binaural Spatio-Temporal Wiener Filter (BinSTWF) model.
+"""
+
 import math
 from typing import Union
 
@@ -15,7 +19,12 @@ PI = math.pi
 
 class BinSTWF(BaseLitModel):
     """
-    binaural spatio-temporal Wiener filter
+    Binaural Spatio-Temporal Wiener Filter (BinSTWF).
+
+    This model implements a spatio-temporal Wiener filter for binaural audio
+    signals. It estimates the interference/noise spatio-temporal covariance matrix and speech spatio-temporal
+    correlation vector (also denoted as speech inter-frame correlation (IFC) vector) to compute the filter, which is then applied to the
+    noisy spatio-temporal input signal in the STFT domain.
     """
 
     def __init__(
@@ -43,6 +52,30 @@ class BinSTWF(BaseLitModel):
         binaural: bool = True,
         **kwargs,
     ):
+        """
+        Initializes the BinSTWF model.
+
+        Args:
+            learning_rate (float, optional): Learning rate. Defaults to 1e-3.
+            batch_size (int, optional): Batch size. Defaults to 4.
+            loss (str, optional): Loss function. Defaults to "MagnitudeAbsoluteError".
+            metrics_test (Union[tuple, str], optional): Test metrics.
+            metrics_val (Union[tuple, str], optional): Validation metrics.
+            frame_length (int, optional): Frame length for STFT. Defaults to 128.
+            shift_length (int, optional): Shift length for STFT. Defaults to 32.
+            filter_length (int, optional): Length of the Wiener filter. Defaults to 5.
+            layer (int, optional): Number of layers in the TCN estimator. Defaults to 6.
+            stack (int, optional): Number of stacks in the TCN estimator. Defaults to 2.
+            kernel (int, optional): Kernel size in the TCN estimator. Defaults to 3.
+            hidden_dim (int, optional): Hidden dimension of the TCN. Defaults to None.
+            fs (int, optional): Sampling frequency. Defaults to 16000.
+            num_channels (int, optional): Number of channels. Defaults to 2.
+            minimum_gain (float, optional): Minimum gain in dB. Defaults to -20.0.
+            window_type (str, optional): Window type for STFT. Defaults to "hann".
+            interaural_rtf (str, optional): Interaural RTF estimation method. Defaults to "False".
+            noise_stcm_left_and_right (bool, optional): Use separate noise STCMs for left/right. Defaults to False.
+            binaural (bool, optional): Whether the model is binaural. Defaults to True.
+        """
         super().__init__(
             lr=learning_rate,
             batch_size=batch_size,
@@ -89,6 +122,10 @@ class BinSTWF(BaseLitModel):
         self.save_hyperparameters()
 
     def set_parameters(self):
+        """
+        Sets up the model parameters, including STFT, TCN estimators for noise
+        correlation and speech IFC, and other related components.
+        """
         self.minimum_gain = utils.db2mag(self.minimum_gain)
 
         self.stft = utils.STFTTorch(
@@ -181,6 +218,19 @@ class BinSTWF(BaseLitModel):
         )
 
     def forward_(self, batch):
+        """
+        Forward pass of the BinSTWF model.
+
+        It extracts features, estimates noise correlation and speech IFC,
+        computes the Wiener filter, applies it to the noisy signal, and
+        returns the enhanced output.
+
+        Args:
+            batch (dict): Input batch containing the noisy signal.
+
+        Returns:
+            dict: Dictionary containing the processed output and STFT.
+        """
         (
             noisy,
             num_samples,
@@ -274,6 +324,10 @@ class BinSTWF(BaseLitModel):
         batch_size,
         noisy_signalmodel,
     ):
+        """
+        Estimates vector quantities like speech IFC (gammax), speech PSD, and
+        interaural RTF.
+        """
         gammax, speech_psd_estimate, interaural_rtf = None, None, None
 
         gammax, speech_psd_estimate, interaural_rtf = self.get_gammax_direct(
@@ -283,12 +337,19 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate, interaural_rtf
 
     def estimate_matrix_quantities(self, features_cat, batch_size):
+        """
+        Estimates the noise correlation matrix.
+        """
         correlation_noise = self.get_cov_matrices_hermitian_psd(
             features_cat, batch_size
         )
         return correlation_noise
 
     def modify_filters_omit_first_last_bin(self, filters):
+        """
+        Modifies the filters to apply an identity filter to the first and last
+        frequency bins (DC and Nyquist).
+        """
         filters_shape = list(filters.shape)
         filters_shape[-4] = 1
         filters = torch.cat(
@@ -323,6 +384,9 @@ class BinSTWF(BaseLitModel):
         return filters
 
     def get_filters_global(self, interaural_rtf, filters):
+        """
+        Applies the global interaural RTF to the filters.
+        """
         return torch.cat(
             [
                 filters,
@@ -333,6 +397,9 @@ class BinSTWF(BaseLitModel):
         )
 
     def get_gammax_direct(self, features_cat, batch_size, noisy_signalmodel):
+        """
+        Directly estimates the speech IFC (gammax) using the TCN estimator.
+        """
         gammax = self.speech_ifc_estimator(features_cat)
 
         (
@@ -356,6 +423,10 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate, interaural_rtf
 
     def gammax_direct_simplifications_spatiotemporal(self, gammax, speech_psd_estimate):
+        """
+        Applies simplifications to the speech IFC based on the interaural RTF
+        estimation method.
+        """
         if self.interaural_rtf == "global":
             return self.gammax_direct_spatiotemporal_global(gammax, speech_psd_estimate)
         elif self.interaural_rtf == "ipsilateral":
@@ -366,6 +437,9 @@ class BinSTWF(BaseLitModel):
             return self.gammax_direct_spatiotemporal_none(gammax, speech_psd_estimate)
 
     def gammax_direct_spatiotemporal_none(self, gammax, speech_psd_estimate):
+        """
+        Handles the case where no interaural RTF is used.
+        """
         gammax = gammax.unfold(
             dimension=-1,
             size=self.filter_length - 1,
@@ -396,6 +470,9 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate, None
 
     def gammax_direct_spatiotemporal_ipsilateral(self, gammax, speech_psd_estimate):
+        """
+        Handles the case where an ipsilateral interaural RTF is used.
+        """
         interaural_rtf, gammax = gammax[:, 0].tensor_split(
             (2 * (self.num_channels - 1),), dim=-1
         )
@@ -450,6 +527,9 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate, interaural_rtf
 
     def gammax_direct_spatiotemporal_global(self, gammax, speech_psd_estimate):
+        """
+        Handles the case where a global interaural RTF is used.
+        """
         interaural_rtf, gammax = gammax[:, 0].tensor_split(
             ((1 + self.binaural) * self.num_channels - 1,), dim=-1
         )
@@ -485,6 +565,9 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate, interaural_rtf
 
     def reshape_gammax_direct(self, batch_size, gammax):
+        """
+        Reshapes the estimated speech IFC into the correct complex format.
+        """
         reshape_size = (
             batch_size,
             1,
@@ -506,6 +589,10 @@ class BinSTWF(BaseLitModel):
     def separate_gammax_into_gammax_and_speech_psds(
         self, batch_size, noisy_signalmodel, gammax
     ):
+        """
+        Separates the output of the speech IFC estimator into the speech IFC
+        (gammax) and the speech PSD estimates.
+        """
         speech_psd_estimate = (
             F.softplus(
                 gammax[
@@ -548,6 +635,9 @@ class BinSTWF(BaseLitModel):
         return gammax, speech_psd_estimate
 
     def get_cov_matrices_hermitian_psd(self, features_cat, batch_size):
+        """
+        Estimates the noise covariance matrices from the features.
+        """
         view_shape = (
             batch_size,
             self.frequency_bins,
@@ -582,6 +672,9 @@ class BinSTWF(BaseLitModel):
         return correlation_noise
 
     def get_multiframe_vectors(self, noisy):
+        """
+        Creates multi-frame vectors from the noisy STFT.
+        """
         noisy_signalmodel = F.pad(noisy, pad=[self.filter_length - 1, 0]).unfold(
             dimension=-1, size=self.filter_length, step=1
         )
@@ -593,6 +686,9 @@ class BinSTWF(BaseLitModel):
         return noisy_signalmodel
 
     def get_features(self, batch):
+        """
+        Extracts features from the input batch.
+        """
         # channels are ordered as L, L, ..., R, R, ... if binaural
         noisy = batch["input"][:, : (1 + self.binaural) * self.num_channels]
         num_samples = noisy.shape[-1]
@@ -604,6 +700,9 @@ class BinSTWF(BaseLitModel):
         return noisy, num_samples, features_cat
 
     def get_features_mag_phase(self, noisy):
+        """
+        Extracts magnitude and phase features from the noisy STFT.
+        """
         noisy_mag = torch.cat(
             [(noisy[:, x, 1:-1].abs() + EPS) for x in torch.arange(noisy.shape[1])],
             dim=1,
@@ -626,6 +725,9 @@ class BinSTWF(BaseLitModel):
         return features_cat
 
     def get_mvdr(self, gammax, Phi, regularize=False):
+        """
+        Computes the MVDR filter.
+        """
         if regularize:
             Phi = utils.tik_reg(Phi, self.reg)
         b = Phi @ gammax
@@ -639,6 +741,9 @@ class BinSTWF(BaseLitModel):
         correlation_noise_inv_gammax,
         regularize=False,
     ):
+        """
+        Computes the post-filter.
+        """
         nom = speech_psd_estimate.permute(0, 3, 1, 2)[..., None, None]
         if regularize:
             correlation_noise = utils.tik_reg(correlation_noise, self.reg)

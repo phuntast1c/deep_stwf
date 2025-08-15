@@ -1,3 +1,8 @@
+"""
+This module defines the Temporal Convolutional Network (TCN) estimator, which is
+used for estimating various quantities in the speech enhancement models.
+"""
+
 import torch
 from torch import nn
 
@@ -6,7 +11,12 @@ from . import DepthConv1d, cLN
 
 class TCNEstimator(nn.Module):
     """
-    small modification of TCN for spectrum-based parameter estimation
+    Temporal Convolutional Network (TCN) for spectrum-based parameter estimation.
+
+    This model uses a stack of dilated 1D convolutions to process sequences of
+    spectral features. It can be used for various estimation tasks, such as
+    estimating correlation matrices or inter-frame correlation vectors.
+    The code is based on the official Conv-TasNet repository (https://github.com/naplab/Conv-TasNet)
     """
 
     def __init__(
@@ -26,6 +36,25 @@ class TCNEstimator(nn.Module):
         win=2,
         stride=None,
     ):
+        """
+        Initializes the TCNEstimator.
+
+        Args:
+            input_dim (int): Dimension of the input features.
+            output_dim (int): Dimension of the output.
+            BN_dim (int): Dimension of the bottleneck layer.
+            hidden_dim (int): Dimension of the hidden layers in the TCN blocks.
+            layer (int, optional): Number of layers in each stack. Defaults to 8.
+            stack (int, optional): Number of stacks of TCN blocks. Defaults to 3.
+            kernel (int, optional): Kernel size of the convolutions. Defaults to 3.
+            skip (bool, optional): Whether to use skip connections. Defaults to True.
+            causal (bool, optional): Whether to use causal convolutions. Defaults to True.
+            dilated (bool, optional): Whether to use dilated convolutions. Defaults to True.
+            use_encoder (bool, optional): Whether to use a convolutional encoder for waveform input. Defaults to False.
+            sr (int, optional): Sampling rate (used if `use_encoder` is True). Defaults to 16000.
+            win (int, optional): Window size in ms (used if `use_encoder` is True). Defaults to 2.
+            stride (int, optional): Stride of the encoder (used if `use_encoder` is True). Defaults to None.
+        """
         super().__init__()
 
         # input is a sequence of features of shape (B, N, L)
@@ -96,6 +125,9 @@ class TCNEstimator(nn.Module):
         self.skip = skip
 
     def pad_signal(self, signal):
+        """
+        Pads the input signal to be compatible with the convolutional encoder.
+        """
         # inp is the waveforms: (B, T) or (B, 1, T)
         # reshape and padding
         if signal.dim() not in [2, 3]:
@@ -120,6 +152,16 @@ class TCNEstimator(nn.Module):
         return signal, rest
 
     def forward(self, inp):
+        """
+        Forward pass of the TCNEstimator.
+
+        Args:
+            inp (torch.Tensor): Input tensor of shape (B, N, L), where N is
+                                the feature dimension and L is the sequence length.
+
+        Returns:
+            torch.Tensor: Output tensor of shape (B, output_dim, L).
+        """
         if self.use_encoder:
             # optional: encoding wave inp: (B, L)
             output, _ = self.pad_signal(inp)

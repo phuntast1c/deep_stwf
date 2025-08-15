@@ -11,7 +11,11 @@ PI = math.pi
 
 class BilSTWF(BaseLitModel):
     """
-    bilateral spatio-temporal Wiener filter
+    Bilateral Spatio-Temporal Wiener Filter (BilSTWF) model.
+
+    This model applies a spatio-temporal Wiener filter to each channel (left and
+    right) of a binaural audio signal independently. It uses two instances of the
+    `BinSTWF` model to process the two channels.
     """
 
     def __init__(
@@ -38,6 +42,29 @@ class BilSTWF(BaseLitModel):
         noise_stcm_left_and_right: bool = False,
         **kwargs,
     ):
+        """
+        Initializes the BilSTWF model.
+
+        Args:
+            learning_rate (float, optional): Learning rate for the optimizer. Defaults to 1e-3.
+            batch_size (int, optional): Batch size for training. Defaults to 4.
+            loss (str, optional): Loss function to use. Defaults to "MagnitudeAbsoluteError".
+            metrics_test (Union[tuple, str], optional): Metrics for testing.
+            metrics_val (Union[tuple, str], optional): Metrics for validation.
+            frame_length (int, optional): Length of each audio frame. Defaults to 128.
+            shift_length (int, optional): Hop length between frames. Defaults to 32.
+            filter_length (int, optional): Length of the Wiener filter. Defaults to 5.
+            layer (int, optional): Number of layers in the TCN. Defaults to 6.
+            stack (int, optional): Number of stacks in the TCN. Defaults to 2.
+            kernel (int, optional): Kernel size in the TCN. Defaults to 3.
+            hidden_dim (int, optional): Hidden dimension of the TCN. Defaults to None.
+            fs (int, optional): Sampling frequency. Defaults to 16000.
+            num_channels (int, optional): Number of input channels. Defaults to 1.
+            minimum_gain (float, optional): Minimum gain to apply. Defaults to -20.0.
+            window_type (str, optional): Windowing function to use. Defaults to "hann".
+            interaural_rtf (str, optional): Whether to use interaural RTF. Defaults to "False".
+            noise_stcm_left_and_right (bool, optional): Whether to use separate noise STCMs for left and right. Defaults to False.
+        """
         super().__init__(
             lr=learning_rate,
             batch_size=batch_size,
@@ -116,6 +143,22 @@ class BilSTWF(BaseLitModel):
         self.save_hyperparameters()
 
     def forward_(self, batch):
+        """
+        Forward pass of the BilSTWF model.
+
+        It splits the input batch into left and right channels, processes them
+        separately using the two `BinSTWF` models, and then concatenates the
+        results.
+
+        Args:
+            batch (dict): A dictionary containing the input signals. The tensors
+                          should have a channel dimension that can be split into
+                          two halves (left and right).
+
+        Returns:
+            dict: A dictionary containing the processed output signals, with left
+                  and right channels concatenated.
+        """
         # extract left and right batches
         batch_left, batch_right = {}, {}
         for key, val in batch.items():

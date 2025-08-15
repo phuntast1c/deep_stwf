@@ -1,3 +1,7 @@
+"""
+This module defines the base class for all PyTorch Lightning models in this project.
+"""
+
 import contextlib
 import os
 from abc import abstractmethod
@@ -15,6 +19,13 @@ from .. import metrics as metrics
 
 
 class BaseLitModel(pl.LightningModule):
+    """
+    Base class for PyTorch Lightning models.
+    It handles model initialization, optimizer configuration, training, validation,
+    and testing steps. It also includes methods for logging metrics and audio
+    samples to Weights & Biases (wandb).
+    """
+
     def __init__(
         self,
         lr: float,
@@ -29,6 +40,21 @@ class BaseLitModel(pl.LightningModule):
         save_target: bool = False,
         **kwargs,
     ):
+        """
+        Initializes the BaseLitModel.
+
+        Args:
+            lr (float): Learning rate.
+            batch_size (int): Batch size.
+            loss (str): Name of the loss function to use.
+            metrics_test (Union[tuple, str]): Metrics to use for testing.
+            metrics_val (Union[tuple, str]): Metrics to use for validation.
+            model_name (str): Name of the model.
+            my_optimizer (str, optional): Optimizer to use. Defaults to "AdamW".
+            my_lr_scheduler (str, optional): Learning rate scheduler. Defaults to "ReduceLROnPlateau".
+            compute_complexity_metrics (bool, optional): Whether to compute complexity metrics. Defaults to True.
+            save_target (bool, optional): Whether to save target audio during testing. Defaults to False.
+        """
         super().__init__()
 
         self.learning_rate = lr
@@ -58,15 +84,28 @@ class BaseLitModel(pl.LightningModule):
 
     @abstractmethod
     def forward_(self, x):
+        """
+        Abstract forward method to be implemented by subclasses.
+        This method should contain the core model logic.
+        """
         raise NotImplementedError
 
     def forward(self, x: dict) -> dict:
+        """
+        Main forward pass for the model.
+        """
         return self.forward_(x)
 
     def count_parameters(self):
+        """
+        Counts the number of trainable parameters in the model.
+        """
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     def configure_optimizers(self):
+        """
+        Configures the optimizer and learning rate scheduler.
+        """
         if self.my_optimizer == "AdamW":
             optimizer = torch.optim.AdamW(self.parameters(), lr=self.learning_rate)
         elif self.my_optimizer == "Adam":
@@ -96,6 +135,10 @@ class BaseLitModel(pl.LightningModule):
 
     # skip batches including NaN gradients
     def on_after_backward(self) -> None:
+        """
+        Handles NaN gradients after the backward pass.
+        It logs the number of batches with NaN gradients.
+        """
         increase_nan_batch_counter = False
         for param in self.parameters():
             if param.grad is not None:
@@ -114,6 +157,9 @@ class BaseLitModel(pl.LightningModule):
         return super().on_after_backward()
 
     def training_step(self, batch, idx):
+        """
+        Performs a single training step.
+        """
         output = self(batch.signals)
         loss = self.criterion(output, batch.signals, batch.meta)
         self.log_dict(
@@ -131,12 +177,21 @@ class BaseLitModel(pl.LightningModule):
         return {"loss": loss["loss"]}
 
     def load_state_dict(self, state_dict: os.Mapping[str, Any], strict: bool = True):
+        """
+        Loads the model's state dict.
+        """
         return super().load_state_dict(state_dict, strict)
 
     def configure_callbacks(self) -> Sequence[Callback] | Callback:
+        """
+        Configures callbacks for the model.
+        """
         return super().configure_callbacks()
 
     def _get_metric_collection(self, stage, dataloader_idx):
+        """
+        Gets the metric collection for a given stage and dataloader.
+        """
         if dataloader_idx not in self.metric_collections[stage]:
             metrics_ = self.metrics_test if stage == "test" else self.metrics_val
             self.metric_collections[stage][dataloader_idx] = MetricCollection(
@@ -145,6 +200,9 @@ class BaseLitModel(pl.LightningModule):
         return self.metric_collections[stage][dataloader_idx]
 
     def validation_step(self, batch, idx, dataloader_idx: int = 0):
+        """
+        Performs a single validation step.
+        """
         output = self(batch.signals)
         loss = self.criterion(output, batch.signals, batch.meta)
 
@@ -172,6 +230,9 @@ class BaseLitModel(pl.LightningModule):
         return {"loss_val": loss["loss"], "metrics": metrics_dict}
 
     def log_wave(self, batch, idx: int, output: dict, stage: str):
+        """
+        Logs audio samples to Weights & Biases.
+        """
         noisy = batch.signals["input_eval"][0].T.detach().cpu().numpy()
         enhanced = output["input_proc"][0].T.detach().cpu().numpy()
 
@@ -192,7 +253,7 @@ class BaseLitModel(pl.LightningModule):
 
     def test_step(self, batch: dict, batch_idx: int, dataloader_idx: int = 0) -> dict:
         """
-        get loss, metric values and save .wav
+        Performs a single test step, calculates metrics, and saves enhanced audio.
         """
 
         signals, meta = batch.signals, batch.meta
@@ -235,6 +296,11 @@ class BaseLitModel(pl.LightningModule):
             )
 
     def on_test_epoch_end(self) -> None:
+        """
+        Called at the end of the test epoch.
+        It collects all test results, combines them into a single DataFrame,
+        adds complexity metrics, and saves the results to a CSV file.
+        """
         # collect all results and save to dataframe
         dataframes = []
         for metric_collection in self.metric_collections["test"].values():
@@ -259,9 +325,15 @@ class BaseLitModel(pl.LightningModule):
         combined_dataframe.to_csv(os.path.join(save_dir, "results.csv"), index=False)
 
     def train_dataloader(self):
+        """
+        Returns the training dataloader.
+        """
         return self.datamodule.train_dataloader()
 
     def save_individual_wave(self, dataloader_idx, wave_tensor, filename):
+        """
+        Saves an individual audio waveform to a file.
+        """
         save_dir = os.path.join(
             self.logger.experiment.notes,
             "test",
@@ -277,14 +349,27 @@ class BaseLitModel(pl.LightningModule):
         )
 
     def on_fit_start(self):
+        """
+        Called at the beginning of the training fit.
+        Computes complexity metrics if enabled.
+        """
         if self.compute_complexity_metrics:
             self.compute_complexity_metrics_fn()
 
     def on_test_start(self):
+        """
+        Called at the beginning of the test.
+        Computes complexity metrics if enabled.
+        """
         if self.compute_complexity_metrics:
             self.compute_complexity_metrics_fn()
 
     def compute_complexity_metrics_fn(self):
+        """
+        Computes and logs complexity metrics for the model, such as the number
+        of parameters, inference time, memory usage, FLOPs, and MACs.
+        It performs profiling on both CPU and GPU.
+        """
         print("computing complexity metrics...")
         # Number of trainable weights
         total_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
