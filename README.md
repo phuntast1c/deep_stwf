@@ -1,6 +1,6 @@
 # Deep Binaural Spatio-Temporal Wiener Filtering
 
-This repository contains supplementary code for the paper "Imposing Correlation Structures for Deep Binaural Spatio-Temporal Wiener Filtering" by M. Tammen and S. Doclo, IEEE Trans. Audio, Speech and Language Processing, vol. 33, pp. 1278-1292, 2025.
+This repository contains supplementary code for the paper "[Imposing Correlation Structures for Deep Binaural Spatio-Temporal Wiener Filtering](https://uol.de/f/6/dept/mediphysik/ag/sigproc/download/papers/SP2023_6.pdf?v=1743258194)" by M. Tammen and S. Doclo, IEEE Trans. Audio, Speech and Language Processing, vol. 33, pp. 1278-1292, 2025.
 
 ## Installation
 
