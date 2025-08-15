@@ -4,9 +4,9 @@ import soundfile as sf
 import torch
 import yaml
 
-from bmfwf.models.bdmfmvdr import BDMFMVDR
-from bmfwf.models.bilatdmfmvdr import BilatDMFMVDR
-from bmfwf.models.directfiltering import DirectFiltering
+from stwf.models.binstwf import BinSTWF
+from stwf.models.bilstwf import BilSTWF
+from stwf.models.directfiltering import DirectFiltering
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -34,9 +34,9 @@ def main(args):
 
     # Determine model class
     if "bilat" in args.model:
-        model_class = BilatDMFMVDR
+        model_class = BilSTWF
     elif "stwf" in args.model:
-        model_class = BDMFMVDR
+        model_class = BinSTWF
     elif "df" in args.model:
         model_class = DirectFiltering
     else:

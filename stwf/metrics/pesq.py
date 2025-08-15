@@ -2,7 +2,7 @@ import torch
 from pesq import pesq as pesq_
 from pypesq import pesq as pesq_nb_raw
 
-from bmfwf import utils
+from stwf import utils
 
 from . import BaseMetric
 

@@ -13,9 +13,9 @@ EPS = torch.as_tensor(torch.finfo(torch.get_default_dtype()).eps)
 PI = math.pi
 
 
-class BDMFMVDR(BaseLitModel):
+class BinSTWF(BaseLitModel):
     """
-    binaural deep MFMVDR filter
+    binaural spatio-temporal Wiener filter
     """
 
     def __init__(
@@ -35,7 +35,7 @@ class BDMFMVDR(BaseLitModel):
         kernel: int = 3,
         hidden_dim: int = None,
         fs: int = 16000,
-        num_channels: int = 1,
+        num_channels: int = 2,
         minimum_gain: float = -20.0,
         window_type: str = "hann",
         interaural_rtf: str = "False",

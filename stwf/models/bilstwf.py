@@ -3,15 +3,15 @@ from typing import Union
 
 import torch
 
-from . import BDMFMVDR, BaseLitModel
+from . import BinSTWF, BaseLitModel
 
 EPS = torch.as_tensor(torch.finfo(torch.get_default_dtype()).eps)
 PI = math.pi
 
 
-class BilatDMFMVDR(BaseLitModel):
+class BilSTWF(BaseLitModel):
     """
-    binaural deep MFMVDR filter
+    bilateral spatio-temporal Wiener filter
     """
 
     def __init__(
@@ -66,7 +66,7 @@ class BilatDMFMVDR(BaseLitModel):
         self.frequency_bins = self.frame_length // 2 + 1
         self.frequency_bins -= 2
 
-        self.model_left = BDMFMVDR(
+        self.model_left = BinSTWF(
             learning_rate=learning_rate,
             batch_size=batch_size,
             loss=loss,
@@ -88,7 +88,7 @@ class BilatDMFMVDR(BaseLitModel):
             noise_stcm_left_and_right=noise_stcm_left_and_right,
             **kwargs,
         )
-        self.model_right = BDMFMVDR(
+        self.model_right = BinSTWF(
             learning_rate=learning_rate,
             batch_size=batch_size,
             loss=loss,

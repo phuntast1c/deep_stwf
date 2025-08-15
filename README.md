@@ -1,10 +1,10 @@
-# Binaural Speech Enhancement
+# Deep Binaural Spatio-Temporal Wiener Filtering
 
 This repository contains supplementary code for the paper "Imposing Correlation Structures for Deep Binaural Spatio-Temporal Wiener Filtering" by M. Tammen and S. Doclo, IEEE Trans. Audio, Speech and Language Processing, vol. 33, pp. 1278-1292, 2025.
 
 ## Installation
 
-1.  Clone this repository to your local machine.
+1.  Clone this repository to your machine.
 2.  Make sure Anaconda or Miniconda are available.
 3.  Create and activate the conda environment using the provided `environment.yml` file. We recommend using Mamba for a faster installation.
     ```bash

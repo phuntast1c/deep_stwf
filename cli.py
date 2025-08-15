@@ -9,12 +9,12 @@ from lightning.pytorch.callbacks import (  # StochasticWeightAveraging,
 )
 from lightning.pytorch.cli import LightningCLI
 
-from bmfwf import (
+from stwf import (
     datasets,  # noqa: F401
     models,  # noqa: F401
     utils,
 )
-from bmfwf.models import base
+from stwf.models import base
 
 torch.set_float32_matmul_precision("high")
 

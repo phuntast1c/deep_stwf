@@ -1,7 +1,7 @@
 import torch
 from pystoi import stoi as stoi_
 
-from bmfwf import utils
+from stwf import utils
 
 from . import BaseMetric
 

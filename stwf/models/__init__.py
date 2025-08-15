@@ -1,4 +1,4 @@
 from .base import BaseLitModel
-from .bdmfmvdr import BDMFMVDR
-from .bilatdmfmvdr import BilatDMFMVDR
+from .binstwf import BinSTWF
+from .bilstwf import BilSTWF
 from .directfiltering import DirectFiltering
